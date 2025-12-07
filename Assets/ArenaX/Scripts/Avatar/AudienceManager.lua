@@ -26,15 +26,19 @@ local function NullableInject(OBJECT)
 end
 
 ---@type GameObject
----@details ArenaXManager가 있는 오브젝트
-ArenaXManagerObject = checkInject(ArenaXManagerObject)
+---@details ArenaXManager가 있는 오브젝트 (비워두면 자동으로 찾음)
+ArenaXManagerObject = NullableInject(ArenaXManagerObject)
+
+---@type string
+---@details ArenaXManager 오브젝트 이름 (자동 찾기용)
+ArenaXManagerName = "ArenaXManager"
 
 ---@type GameObject
----@details 관객 프리팹 (앉은 자세)
-AudiencePrefab = checkInject(AudiencePrefab)
+---@details 관객 프리팹 (앉은 자세) - 프리팹은 반드시 연결 필요
+AudiencePrefab = NullableInject(AudiencePrefab)
 
 ---@type Transform
----@details 관객 오브젝트 부모 (풀링용)
+---@details 관객 오브젝트 부모 (풀링용, 비워두면 자동 생성)
 AudienceContainer = NullableInject(AudienceContainer)
 
 ---@type int
@@ -76,13 +80,43 @@ end
 function start()
     Debug.Log("[AudienceManager] Start")
 
+    -- 자동 찾기 실행
+    FindRequiredObjects()
+
     -- ArenaXManager 참조 가져오기
     if ArenaXManagerObject ~= nil then
         arenaXManager = ArenaXManagerObject:GetLuaComponent("ArenaXManager")
+        if arenaXManager ~= nil then
+            Debug.Log("[AudienceManager] ArenaXManager connected")
+        end
     end
 
-    -- 오브젝트 풀 초기화
-    InitializePool()
+    -- 오브젝트 풀 초기화 (프리팹이 있을 때만)
+    if AudiencePrefab ~= nil then
+        InitializePool()
+    else
+        Debug.LogWarning("[AudienceManager] AudiencePrefab not assigned - audience pool not initialized")
+    end
+end
+
+--- 필요한 오브젝트들 자동 찾기
+function FindRequiredObjects()
+    -- ArenaXManager 찾기
+    if ArenaXManagerObject == nil then
+        ArenaXManagerObject = GameObject.Find(ArenaXManagerName)
+        if ArenaXManagerObject ~= nil then
+            Debug.Log("[AudienceManager] ArenaXManager found: " .. ArenaXManagerName)
+        else
+            Debug.LogWarning("[AudienceManager] ArenaXManager not found: " .. ArenaXManagerName)
+        end
+    end
+
+    -- AudienceContainer 자동 생성 (없으면)
+    if AudienceContainer == nil then
+        local containerObj = GameObject("AudiencePool")
+        AudienceContainer = containerObj.transform
+        Debug.Log("[AudienceManager] AudienceContainer created: AudiencePool")
+    end
 end
 
 function onEnable()

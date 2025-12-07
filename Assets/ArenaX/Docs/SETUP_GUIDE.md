@@ -201,7 +201,8 @@ Seat_Normal (부모)
 
 5. **Injection 설정**:
    ```
-   ArenaXManagerObject: (씬의 ArenaXManager 연결)
+   ArenaXManagerObject: (비워두면 자동으로 찾음)
+   ArenaXManagerName: "ArenaXManager" (자동 찾기용 이름)
    SeatRow: "A"
    SeatNumber: 1
    SeatType: "일반"
@@ -210,6 +211,10 @@ Seat_Normal (부모)
    PlayerTag: "Player"
    PlayerLayerName: "" (비워두거나 레이어 이름)
    ```
+
+> **자동 연결**: `ArenaXManagerObject`를 비워두면 씬에서
+> "ArenaXManager" 이름의 오브젝트를 `GameObject.Find`로 자동 찾습니다.
+> 좌석이 많을 때 일일이 연결할 필요 없음!
 
 ### 4.4 VivenSittable 연결
 
@@ -242,65 +247,116 @@ Seat_Normal (부모)
 
 ---
 
-## 5. 미니맵 UI 제작
+## 5. 좌석 선택 UI 제작
 
-### 5.1 Canvas 생성
+이미지 참고: 왼쪽에 미니맵, 중앙에 드롭다운 필터, 오른쪽에 좌석 버튼 그리드
+
+### 5.1 UI Canvas 구조
+
+```
+SeatSelectionCanvas (World Space)
+├── Background (Panel - 반투명 배경)
+│
+├── LeftPanel (미니맵 영역)
+│   └── MinimapImage (RawImage - 공연장 배치도)
+│
+├── CenterPanel (필터 영역)
+│   ├── Title (TMP_Text - "좌석 선택")
+│   ├── BlockDropdown (TMP_Dropdown - Block 선택)
+│   ├── DistrictDropdown (TMP_Dropdown - 층/구역 선택)
+│   ├── SelectedSeatText (TMP_Text - 선택된 좌석 정보)
+│   └── SelectButton (Button - 선택 확정)
+│
+└── RightPanel (좌석 버튼 영역)
+    └── SeatButtonGrid (Grid Layout Group)
+        └── (동적 생성되는 좌석 버튼들)
+```
+
+### 5.2 Canvas 설정
 
 1. **Canvas 생성**: `UI > Canvas`
-   - 이름: `MinimapCanvas`
+   - 이름: `SeatSelectionCanvas`
 
 2. **Canvas 설정**:
    ```
    Render Mode: World Space
-   Width: 800
-   Height: 600
-   Scale: 0.001, 0.001, 0.001 (작게 조절)
+   Width: 1200
+   Height: 800
+   Scale: 0.001, 0.001, 0.001
    ```
 
 3. **컴포넌트 추가**:
    - `VivenCanvasSetting` (VR UI용)
 
-### 5.2 좌석 버튼 컨테이너
+### 5.3 드롭다운 설정
 
-1. **MinimapCanvas 하위에 Panel 생성**: 이름: `SeatButtonContainer`
+1. **Block 드롭다운**: `UI > Dropdown - TextMeshPro`
+   - 이름: `BlockDropdown`
+   - Options: 스크립트에서 자동 설정됨 (All, A, B, C, D)
 
-2. **컴포넌트 추가**:
-   - `Grid Layout Group`
+2. **District 드롭다운**: `UI > Dropdown - TextMeshPro`
+   - 이름: `DistrictDropdown`
+   - Options: 스크립트에서 자동 설정됨 (All, 1층, 2층, VIP)
+
+### 5.4 좌석 버튼 그리드
+
+1. **Panel 생성**: 이름: `SeatButtonGrid`
+
+2. **Grid Layout Group 추가**:
    ```
-   Cell Size: 50, 50
-   Spacing: 5, 5
+   Cell Size: 80, 60
+   Spacing: 10, 10
+   Start Corner: Upper Left
+   Start Axis: Horizontal
+   Child Alignment: Upper Left
    Constraint: Fixed Column Count
-   Constraint Count: 5 (한 열의 좌석 수)
+   Constraint Count: 5
    ```
 
-### 5.3 좌석 버튼 프리팹
+3. **Content Size Fitter 추가** (선택사항):
+   ```
+   Vertical Fit: Preferred Size
+   ```
+
+### 5.5 좌석 버튼 프리팹
 
 1. **Button 생성**: `UI > Button - TextMeshPro`
    - 이름: `SeatButton`
+   - Size: 80 x 60
 
-2. **Button 설정**:
-   - Size: 50 x 50
-   - 텍스트: 비워두기 (스크립트에서 설정)
+2. **버튼 텍스트**:
+   - Font Size: 14
+   - Alignment: Center
 
-3. **프리팹으로 저장**: `Assets/ArenaX/Prefabs/UI/SeatButton.prefab`
+3. **프리팹 저장**: `Assets/ArenaX/Prefabs/UI/SeatButton.prefab`
 
-4. **씬에서 삭제** (프리팹만 사용)
+### 5.6 SeatSelectionUI 스크립트 연결
 
-### 5.4 추가 UI 요소 (선택사항)
+1. **빈 GameObject 생성**: 이름: `SeatSelectionUI`
 
-**정보 패널**:
-- 현재 좌석 정보 표시 텍스트
+2. **VivenLuaBehaviour 추가**:
+   - Script: `Assets/ArenaX/Scripts/UI/SeatSelectionUI.lua`
 
-**관객 토글 버튼**:
-- "관객 보기/숨기기" 버튼
+3. **Injection 설정**:
+   ```
+   ArenaXManagerObject: (비워두면 자동 찾기)
+   BlockDropdown: BlockDropdown 오브젝트
+   DistrictDropdown: DistrictDropdown 오브젝트
+   SelectButton: SelectButton 오브젝트
+   SeatButtonGrid: SeatButtonGrid 오브젝트
+   SeatButtonPrefab: SeatButton.prefab
+   SelectedSeatText: (선택된 좌석 표시 텍스트)
+   UICanvas: SeatSelectionCanvas
+   UIDistance: 1.5
+   UIHeightOffset: -0.2
+   ```
 
-### 5.5 SeatUIManager에 연결
+### 5.7 UI 호출 방법
 
-SeatUIManager의 Injection에서:
-```
-MinimapCanvas: MinimapCanvas 오브젝트
-SeatButtonContainer: SeatButtonContainer 오브젝트
-SeatButtonPrefab: SeatButton.prefab
+```lua
+-- 다른 스크립트에서 UI 토글
+local seatSelectionUI = GameObject.Find("SeatSelectionUI"):GetLuaComponent("SeatSelectionUI")
+seatSelectionUI.ToggleUI()
 ```
 
 ---

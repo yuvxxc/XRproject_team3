@@ -34,8 +34,12 @@ local function NullableInject(OBJECT)
 end
 
 ---@type GameObject
----@details ArenaXManager가 있는 오브젝트
-ArenaXManagerObject = checkInject(ArenaXManagerObject)
+---@details ArenaXManager가 있는 오브젝트 (비워두면 자동으로 "ArenaXManager" 이름으로 찾음)
+ArenaXManagerObject = NullableInject(ArenaXManagerObject)
+
+---@type string
+---@details ArenaXManager 오브젝트 이름 (자동 찾기용)
+ArenaXManagerName = "ArenaXManager"
 
 ---@type string
 ---@details 좌석 열 번호 (A, B, C...)
@@ -88,7 +92,6 @@ local seatedPlayer = nil
 function awake()
     -- 좌석 ID 생성
     seatId = SeatRow .. "-" .. tostring(SeatNumber)
-    Debug.Log("[SeatController] Awake - SeatId: " .. seatId)
 
     -- VivenSittable 컴포넌트 가져오기 (부모에서 찾기)
     vivenSittable = self:GetComponent("VivenSittable")
@@ -98,23 +101,11 @@ function awake()
 
     -- Collider 가져오기
     seatCollider = self:GetComponent(typeof(CS.UnityEngine.Collider))
-    if seatCollider ~= nil then
-        -- Trigger로 설정되어 있는지 확인
-        if not seatCollider.isTrigger then
-            Debug.LogWarning("[SeatController] Collider should be set as Trigger for seat detection: " .. seatId)
-        end
-    else
-        Debug.LogError("[SeatController] Collider not found on " .. seatId)
-    end
 end
 
 function start()
-    Debug.Log("[SeatController] Start - SeatId: " .. seatId)
-
     -- ArenaXManager 참조 가져오기
-    if ArenaXManagerObject ~= nil then
-        arenaXManager = ArenaXManagerObject:GetLuaComponent("ArenaXManager")
-    end
+    FindArenaXManager()
 
     -- ArenaXManager에 좌석 등록
     if arenaXManager ~= nil then
@@ -130,6 +121,44 @@ function start()
             isOccupied = false
         }
         arenaXManager.RegisterSeat(seatId, seatData)
+    end
+end
+
+--- ArenaXManager 찾기 (Injection 또는 GameObject.Find)
+function FindArenaXManager()
+    -- 이미 찾았으면 스킵
+    if arenaXManager ~= nil then
+        return
+    end
+
+    -- 1. Injection으로 연결된 경우
+    if ArenaXManagerObject ~= nil then
+        arenaXManager = ArenaXManagerObject:GetLuaComponent("ArenaXManager")
+        if arenaXManager ~= nil then
+            return
+        end
+    end
+
+    -- 2. GameObject.Find로 찾기
+    local managerObj = GameObject.Find(ArenaXManagerName)
+    if managerObj ~= nil then
+        arenaXManager = managerObj:GetLuaComponent("ArenaXManager")
+        if arenaXManager ~= nil then
+            return
+        end
+    end
+
+    -- 3. 대체 이름으로 시도
+    local altNames = { "ArenaXManager", "GameManager", "Manager" }
+    for _, name in ipairs(altNames) do
+        local obj = GameObject.Find(name)
+        if obj ~= nil then
+            local mgr = obj:GetLuaComponent("ArenaXManager")
+            if mgr ~= nil then
+                arenaXManager = mgr
+                return
+            end
+        end
     end
 end
 
@@ -168,8 +197,6 @@ function onDisable()
     end
 end
 
---endregion
-
 --region Trigger 이벤트 (착석 감지)
 
 --- 플레이어가 좌석 영역에 들어왔을 때
@@ -179,10 +206,8 @@ function onTriggerEnter(other)
         return
     end
 
-    Debug.Log("[SeatController] Player entered seat: " .. seatId)
-
     isPlayerInTrigger = true
-    sitTimer = 0  -- 타이머 시작
+    sitTimer = 0
     standTimer = 0
     seatedPlayer = other.gameObject
 
@@ -198,10 +223,8 @@ function onTriggerExit(other)
         return
     end
 
-    Debug.Log("[SeatController] Player exited seat: " .. seatId)
-
     isPlayerInTrigger = false
-    standTimer = 0  -- 이탈 타이머 시작
+    standTimer = 0
     sitTimer = 0
 end
 
@@ -230,8 +253,6 @@ function OnSit()
         return
     end
 
-    Debug.Log("[SeatController] OnSit confirmed - SeatId: " .. seatId)
-
     isOccupied = true
     sitTimer = 0
 
@@ -253,8 +274,6 @@ function OnStand()
     if not isOccupied then
         return
     end
-
-    Debug.Log("[SeatController] OnStand confirmed - SeatId: " .. seatId)
 
     isOccupied = false
     standTimer = 0

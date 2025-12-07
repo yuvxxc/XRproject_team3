@@ -25,20 +25,32 @@ local function NullableInject(OBJECT)
 end
 
 ---@type GameObject
----@details ArenaXManager가 있는 오브젝트
-ArenaXManagerObject = checkInject(ArenaXManagerObject)
+---@details ArenaXManager가 있는 오브젝트 (비워두면 자동으로 찾음)
+ArenaXManagerObject = NullableInject(ArenaXManagerObject)
+
+---@type string
+---@details ArenaXManager 오브젝트 이름 (자동 찾기용)
+ArenaXManagerName = "ArenaXManager"
 
 ---@type GameObject
----@details 미니맵 Canvas
-MinimapCanvas = checkInject(MinimapCanvas)
+---@details 미니맵 Canvas (비워두면 자동으로 "MinimapCanvas" 찾음)
+MinimapCanvas = NullableInject(MinimapCanvas)
+
+---@type string
+---@details 미니맵 Canvas 오브젝트 이름 (자동 찾기용)
+MinimapCanvasName = "MinimapCanvas"
 
 ---@type GameObject
----@details 좌석 버튼 컨테이너 (Grid Layout Group)
-SeatButtonContainer = checkInject(SeatButtonContainer)
+---@details 좌석 버튼 컨테이너 (비워두면 자동으로 "SeatButtonContainer" 찾음)
+SeatButtonContainer = NullableInject(SeatButtonContainer)
+
+---@type string
+---@details 좌석 버튼 컨테이너 이름 (자동 찾기용)
+SeatButtonContainerName = "SeatButtonContainer"
 
 ---@type GameObject
----@details 좌석 버튼 프리팹
-SeatButtonPrefab = checkInject(SeatButtonPrefab)
+---@details 좌석 버튼 프리팹 (필수 - 프리팹은 자동으로 찾을 수 없음)
+SeatButtonPrefab = NullableInject(SeatButtonPrefab)
 
 ---@type GameObject
 ---@details 정보 패널 (좌석 정보 표시)
@@ -53,7 +65,7 @@ CurrentSeatText = NullableInject(CurrentSeatText)
 AudienceToggleButton = NullableInject(AudienceToggleButton)
 
 ---@type Transform
----@details 플레이어 카메라 (UI가 따라다닐 대상)
+---@details 플레이어 카메라 (UI가 따라다닐 대상, 비워두면 Camera.main 사용)
 PlayerCamera = NullableInject(PlayerCamera)
 
 ---@type string
@@ -91,6 +103,10 @@ local isUIVisible = false
 local targetPosition = nil
 local targetRotation = nil
 
+-- 디버그용 타이머
+local debugTimer = 0
+local DEBUG_INTERVAL = 2.0  -- 2초 간격으로 로그 출력
+
 -- UI 색상 설정
 local UI_COLORS = {
     normal = Color(0.3, 0.3, 0.3, 1),      -- 회색 (기본)
@@ -109,9 +125,15 @@ end
 function start()
     Debug.Log("[SeatUIManager] Start")
 
+    -- 자동 찾기 실행
+    FindRequiredObjects()
+
     -- ArenaXManager 참조 가져오기
     if ArenaXManagerObject ~= nil then
         arenaXManager = ArenaXManagerObject:GetLuaComponent("ArenaXManager")
+        if arenaXManager ~= nil then
+            Debug.Log("[SeatUIManager] ArenaXManager connected")
+        end
     end
 
     -- 플레이어 카메라 자동 찾기 (주입 안된 경우)
@@ -119,6 +141,7 @@ function start()
         local mainCam = Camera.main
         if mainCam ~= nil then
             PlayerCamera = mainCam.transform
+            Debug.Log("[SeatUIManager] PlayerCamera found via Camera.main")
         end
     end
 
@@ -126,8 +149,46 @@ function start()
     InitializeUI()
 
     -- 토글 모드일 경우 시작 시 숨김
-    if UIFollowMode == "toggle" then
+    if UIFollowMode == "toggle" and MinimapCanvas ~= nil then
         SetMinimapVisible(false)
+    end
+end
+
+--- 필요한 오브젝트들 자동 찾기
+function FindRequiredObjects()
+    -- ArenaXManager 찾기
+    if ArenaXManagerObject == nil then
+        ArenaXManagerObject = GameObject.Find(ArenaXManagerName)
+        if ArenaXManagerObject ~= nil then
+            Debug.Log("[SeatUIManager] ArenaXManager found: " .. ArenaXManagerName)
+        else
+            Debug.LogWarning("[SeatUIManager] ArenaXManager not found: " .. ArenaXManagerName)
+        end
+    end
+
+    -- MinimapCanvas 찾기
+    if MinimapCanvas == nil then
+        MinimapCanvas = GameObject.Find(MinimapCanvasName)
+        if MinimapCanvas ~= nil then
+            Debug.Log("[SeatUIManager] MinimapCanvas found: " .. MinimapCanvasName)
+        else
+            Debug.LogWarning("[SeatUIManager] MinimapCanvas not found: " .. MinimapCanvasName)
+        end
+    end
+
+    -- SeatButtonContainer 찾기
+    if SeatButtonContainer == nil then
+        SeatButtonContainer = GameObject.Find(SeatButtonContainerName)
+        if SeatButtonContainer ~= nil then
+            Debug.Log("[SeatUIManager] SeatButtonContainer found: " .. SeatButtonContainerName)
+        else
+            Debug.LogWarning("[SeatUIManager] SeatButtonContainer not found: " .. SeatButtonContainerName)
+        end
+    end
+
+    -- SeatButtonPrefab은 프리팹이라 자동으로 찾을 수 없음
+    if SeatButtonPrefab == nil then
+        Debug.LogWarning("[SeatUIManager] SeatButtonPrefab not assigned - seat buttons will not be generated")
     end
 end
 
@@ -165,6 +226,22 @@ function UpdateFollowUI()
     lookDir.y = 0
     if lookDir.magnitude > 0.01 then
         MinimapCanvas.transform.rotation = Quaternion.LookRotation(-lookDir)
+    end
+
+    -- 2초 간격 디버그 로그
+    debugTimer = debugTimer + Time.deltaTime
+    if debugTimer >= DEBUG_INTERVAL then
+        debugTimer = 0
+        local uiPos = MinimapCanvas.transform.position
+        local playerPos = PlayerCamera.position
+        local offset = uiPos - playerPos
+        Debug.Log(string.format(
+            "[SeatUIManager] DEBUG - Player: (%.2f, %.2f, %.2f) | UI: (%.2f, %.2f, %.2f) | Offset: (%.2f, %.2f, %.2f) | Distance: %.2f",
+            playerPos.x, playerPos.y, playerPos.z,
+            uiPos.x, uiPos.y, uiPos.z,
+            offset.x, offset.y, offset.z,
+            offset.magnitude
+        ))
     end
 end
 

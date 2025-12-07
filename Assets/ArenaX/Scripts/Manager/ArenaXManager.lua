@@ -20,14 +20,22 @@ local function NullableInject(OBJECT)
 end
 
 ---@type GameObject
----@details SeatUIManager가 있는 오브젝트
+---@details SeatUIManager가 있는 오브젝트 (비워두면 자동으로 찾음)
 SeatUIManagerObject = NullableInject(SeatUIManagerObject)
 
+---@type string
+---@details SeatUIManager 오브젝트 이름 (자동 찾기용)
+SeatUIManagerName = "SeatUIManager"
+
 ---@type GameObject
----@details AudienceManager가 있는 오브젝트
+---@details AudienceManager가 있는 오브젝트 (비워두면 자동으로 찾음)
 AudienceManagerObject = NullableInject(AudienceManagerObject)
 
----@type Transform
+---@type string
+---@details AudienceManager 오브젝트 이름 (자동 찾기용)
+AudienceManagerName = "AudienceManager"
+
+---@type boolean
 ---@details 플레이어가 텔레포트될 때 페이드 효과 사용 여부
 UseFadeEffect = true
 --endregion
@@ -66,12 +74,12 @@ local eventListeners = {
 --region 생명주기 함수
 
 function awake()
-    Debug.Log("[ArenaXManager] Awake")
     playerState.playerId = Player.Mine.UserID
 end
 
 function start()
-    Debug.Log("[ArenaXManager] Start")
+    -- 자동 찾기 실행
+    FindRequiredObjects()
 
     -- 다른 매니저 참조 가져오기
     if SeatUIManagerObject ~= nil then
@@ -86,12 +94,23 @@ function start()
     InitializeSeats()
 end
 
+--- 필요한 오브젝트들 자동 찾기
+function FindRequiredObjects()
+    -- SeatUIManager 찾기
+    if SeatUIManagerObject == nil then
+        SeatUIManagerObject = GameObject.Find(SeatUIManagerName)
+    end
+
+    -- AudienceManager 찾기
+    if AudienceManagerObject == nil then
+        AudienceManagerObject = GameObject.Find(AudienceManagerName)
+    end
+end
+
 function onEnable()
-    Debug.Log("[ArenaXManager] OnEnable")
 end
 
 function onDisable()
-    Debug.Log("[ArenaXManager] OnDisable")
 end
 
 --endregion
@@ -100,9 +119,7 @@ end
 
 --- 좌석 데이터 초기화 (씬에서 좌석들을 찾아서 등록)
 function InitializeSeats()
-    Debug.Log("[ArenaXManager] InitializeSeats")
-    -- TODO: 씬에서 SeatController가 있는 오브젝트들을 찾아서 등록
-    -- 또는 수동으로 좌석 데이터를 설정
+    -- SeatController들이 자동으로 RegisterSeat을 호출하여 등록됨
 end
 
 --- 좌석 등록
@@ -110,7 +127,6 @@ end
 ---@param seatData SeatData
 function RegisterSeat(seatId, seatData)
     seats[seatId] = seatData
-    Debug.Log("[ArenaXManager] Registered seat: " .. seatId)
 end
 
 --- 좌석 정보 조회
@@ -133,8 +149,6 @@ end
 --- UI에서 좌석 선택 시 호출
 ---@param seatId string
 function SelectSeat(seatId)
-    Debug.Log("[ArenaXManager] SelectSeat: " .. seatId)
-
     local seatData = seats[seatId]
     if seatData == nil then
         Debug.LogWarning("[ArenaXManager] Seat not found: " .. seatId)
@@ -157,8 +171,6 @@ end
 ---@param seatId string
 ---@param seatData SeatData
 function TeleportToSeat(seatId, seatData)
-    Debug.Log("[ArenaXManager] TeleportToSeat: " .. seatId)
-
     if UseFadeEffect then
         -- 페이드 아웃 -> 텔레포트 -> 페이드 인
         UI.FadeOut(0.3, function()
@@ -181,8 +193,6 @@ end
 --- 플레이어가 좌석에 앉았을 때 (SeatController에서 호출)
 ---@param seatId string
 function OnPlayerSit(seatId)
-    Debug.Log("[ArenaXManager] OnPlayerSit: " .. seatId)
-
     -- 이전 좌석 상태 업데이트
     if playerState.currentSeatId ~= nil then
         local prevSeat = seats[playerState.currentSeatId]
@@ -217,8 +227,6 @@ end
 
 --- 플레이어가 좌석에서 일어났을 때 (SeatController에서 호출)
 function OnPlayerStand()
-    Debug.Log("[ArenaXManager] OnPlayerStand")
-
     local prevSeatId = playerState.currentSeatId
 
     -- 좌석 상태 업데이트
@@ -254,8 +262,6 @@ end
 --- 관객 표시 토글
 ---@param show boolean
 function ToggleAudience(show)
-    Debug.Log("[ArenaXManager] ToggleAudience: " .. tostring(show))
-
     isAudienceVisible = show
 
     if audienceManager ~= nil then
