@@ -127,6 +127,7 @@ end
 ---@param seatData SeatData
 function RegisterSeat(seatId, seatData)
     seats[seatId] = seatData
+    Debug.Log("[ArenaXManager] Seat registered: " .. seatId)
 end
 
 --- 좌석 정보 조회
@@ -171,18 +172,21 @@ end
 ---@param seatId string
 ---@param seatData SeatData
 function TeleportToSeat(seatId, seatData)
+    Debug.Log("[ArenaXManager] TeleportToSeat: " .. seatId)
+
     if UseFadeEffect then
         -- 페이드 아웃 -> 텔레포트 -> 페이드 인
         UI.FadeOut(0.3, function()
             -- 플레이어 위치 이동
-            -- TODO: 실제 텔레포트 구현 (Player API 사용)
-            -- Player.Mine.Teleport(seatData.position)
+            Player.Mine.TeleportPlayer(seatData.position, seatData.rotation)
+            Debug.Log("[ArenaXManager] Teleported to: " .. tostring(seatData.position))
 
             UI.FadeIn(0.3, nil)
         end)
     else
         -- 즉시 텔레포트
-        -- TODO: 실제 텔레포트 구현
+        Player.Mine.TeleportPlayer(seatData.position, seatData.rotation)
+        Debug.Log("[ArenaXManager] Teleported to: " .. tostring(seatData.position))
     end
 end
 

@@ -70,7 +70,7 @@ PlayerCamera = NullableInject(PlayerCamera)
 
 ---@type string
 ---@details UI 팔로우 모드: "follow" (시선 따라감), "wrist" (손목 부착), "toggle" (호출형), "fixed" (고정)
-UIFollowMode = "toggle"
+UIFollowMode = "follow"
 
 ---@type float
 ---@details UI가 플레이어 앞에 위치할 거리
@@ -138,20 +138,88 @@ function start()
 
     -- 플레이어 카메라 자동 찾기 (주입 안된 경우)
     if PlayerCamera == nil then
-        local mainCam = Camera.main
-        if mainCam ~= nil then
-            PlayerCamera = mainCam.transform
-            Debug.Log("[SeatUIManager] PlayerCamera found via Camera.main")
-        end
+        PlayerCamera = FindPlayerCamera()
+    end
+
+    -- 카메라 찾기 실패 시 경고
+    if PlayerCamera == nil then
+        Debug.Log("[SeatUIManager] PlayerCamera not found - UI follow will not work")
+    else
+        Debug.Log("[SeatUIManager] PlayerCamera set: " .. PlayerCamera.gameObject.name)
     end
 
     -- UI 초기화
     InitializeUI()
 
-    -- 토글 모드일 경우 시작 시 숨김
-    if UIFollowMode == "toggle" and MinimapCanvas ~= nil then
-        SetMinimapVisible(false)
+    -- UI 모드에 따른 초기 상태 설정
+    if MinimapCanvas ~= nil then
+        if UIFollowMode == "toggle" then
+            -- 토글 모드: 시작 시 숨김 (명시적 호출로 열기)
+            SetMinimapVisible(false)
+        elseif UIFollowMode == "follow" or UIFollowMode == "fixed" then
+            -- follow/fixed 모드: 시작 시 표시
+            SetMinimapVisible(true)
+        elseif UIFollowMode == "wrist" then
+            -- wrist 모드: 시작 시 표시 (손목 부착은 별도 처리 필요)
+            SetMinimapVisible(true)
+        else
+            -- 알 수 없는 모드: 기본값으로 숨김
+            Debug.Log("[SeatUIManager] Unknown UIFollowMode: " .. tostring(UIFollowMode))
+            SetMinimapVisible(false)
+        end
     end
+
+    -- 초기화 완료 로그
+    Debug.Log("[SeatUIManager] Initialized with UIFollowMode: " .. tostring(UIFollowMode))
+end
+
+--- 플레이어 카메라 찾기 (여러 방법 시도)
+---@return Transform | nil
+function FindPlayerCamera()
+    -- 1. Camera.main 시도
+    local mainCam = Camera.main
+    if mainCam ~= nil then
+        Debug.Log("[SeatUIManager] PlayerCamera found via Camera.main")
+        return mainCam.transform
+    end
+
+    -- 2. XR Origin 하위에서 찾기 (VR 환경)
+    local xrOriginNames = { "XR Origin", "XR Origin (XR Rig)", "XROrigin", "XR Rig" }
+    for _, name in ipairs(xrOriginNames) do
+        local xrOrigin = GameObject.Find(name)
+        if xrOrigin ~= nil then
+            -- XR Origin 하위의 Camera 찾기
+            local cam = xrOrigin:GetComponentInChildren(typeof(Camera))
+            if cam ~= nil then
+                Debug.Log("[SeatUIManager] PlayerCamera found under " .. name)
+                return cam.transform
+            end
+        end
+    end
+
+    -- 3. "Main Camera" 태그로 찾기
+    local taggedCam = GameObject.FindWithTag("MainCamera")
+    if taggedCam ~= nil then
+        Debug.Log("[SeatUIManager] PlayerCamera found via MainCamera tag")
+        return taggedCam.transform
+    end
+
+    -- 4. "Camera" 이름으로 찾기
+    local cameraNames = { "Main Camera", "Camera", "PlayerCamera", "Head" }
+    for _, name in ipairs(cameraNames) do
+        local camObj = GameObject.Find(name)
+        if camObj ~= nil then
+            local cam = camObj:GetComponent(typeof(Camera))
+            if cam ~= nil then
+                Debug.Log("[SeatUIManager] PlayerCamera found by name: " .. name)
+                return camObj.transform
+            end
+        end
+    end
+
+    -- 못 찾음
+    Debug.Log("[SeatUIManager] Could not find PlayerCamera automatically")
+    return nil
 end
 
 --- 필요한 오브젝트들 자동 찾기
@@ -162,7 +230,7 @@ function FindRequiredObjects()
         if ArenaXManagerObject ~= nil then
             Debug.Log("[SeatUIManager] ArenaXManager found: " .. ArenaXManagerName)
         else
-            Debug.LogWarning("[SeatUIManager] ArenaXManager not found: " .. ArenaXManagerName)
+            Debug.Log("[SeatUIManager] ArenaXManager not found: " .. ArenaXManagerName)
         end
     end
 
@@ -172,7 +240,7 @@ function FindRequiredObjects()
         if MinimapCanvas ~= nil then
             Debug.Log("[SeatUIManager] MinimapCanvas found: " .. MinimapCanvasName)
         else
-            Debug.LogWarning("[SeatUIManager] MinimapCanvas not found: " .. MinimapCanvasName)
+            Debug.Log("[SeatUIManager] MinimapCanvas not found: " .. MinimapCanvasName)
         end
     end
 
@@ -182,13 +250,13 @@ function FindRequiredObjects()
         if SeatButtonContainer ~= nil then
             Debug.Log("[SeatUIManager] SeatButtonContainer found: " .. SeatButtonContainerName)
         else
-            Debug.LogWarning("[SeatUIManager] SeatButtonContainer not found: " .. SeatButtonContainerName)
+            Debug.Log("[SeatUIManager] SeatButtonContainer not found: " .. SeatButtonContainerName)
         end
     end
 
     -- SeatButtonPrefab은 프리팹이라 자동으로 찾을 수 없음
     if SeatButtonPrefab == nil then
-        Debug.LogWarning("[SeatUIManager] SeatButtonPrefab not assigned - seat buttons will not be generated")
+        Debug.Log("[SeatUIManager] SeatButtonPrefab not assigned - seat buttons will not be generated")
     end
 end
 

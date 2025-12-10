@@ -89,6 +89,14 @@ UIDistance = 1.5
 ---@type float
 ---@details UI 높이 오프셋
 UIHeightOffset = -0.2
+
+---@type string
+---@details UI 팔로우 모드: "follow" (시선 따라감), "toggle" (호출형), "fixed" (고정)
+UIFollowMode = "follow"
+
+---@type float
+---@details UI 팔로우 속도 (부드러운 이동)
+UIFollowSpeed = 5.0
 --endregion
 
 -- 컴포넌트 참조
@@ -112,6 +120,10 @@ local selectedSeatId = nil
 
 -- UI 상태
 local isUIVisible = false
+
+-- 디버그용 타이머
+local debugTimer = 0
+local DEBUG_INTERVAL = 2.0
 
 -- Block/Section 정의 (공연장 구조에 맞게 수정)
 local BLOCKS = {
@@ -156,30 +168,126 @@ function start()
     -- 이벤트 등록
     RegisterEvents()
 
-    -- 초기 UI 상태
-    if UICanvas ~= nil then
-        SetUIVisible(false)
-    end
-
     -- 플레이어 카메라 찾기
     if PlayerCamera == nil then
-        local mainCam = Camera.main
-        if mainCam ~= nil then
-            PlayerCamera = mainCam.transform
+        PlayerCamera = FindPlayerCamera()
+    end
+
+    -- 카메라 찾기 결과 로그
+    if PlayerCamera == nil then
+        Debug.Log("[SeatSelectionUI] PlayerCamera not found - UI follow will not work")
+    else
+        Debug.Log("[SeatSelectionUI] PlayerCamera set: " .. PlayerCamera.gameObject.name)
+    end
+
+    -- UI 모드에 따른 초기 상태 설정
+    if UICanvas ~= nil then
+        if UIFollowMode == "follow" then
+            -- follow 모드: 시작 시 표시, 플레이어 따라다님
+            SetUIVisible(true)
+        elseif UIFollowMode == "toggle" then
+            -- toggle 모드: 시작 시 숨김, M키나 메뉴 버튼으로 토글
+            SetUIVisible(false)
+        elseif UIFollowMode == "fixed" then
+            -- fixed 모드: 시작 시 표시, 고정 위치
+            SetUIVisible(true)
+        else
+            Debug.Log("[SeatSelectionUI] Unknown UIFollowMode: " .. tostring(UIFollowMode))
+            SetUIVisible(false)
         end
     end
+
+    Debug.Log("[SeatSelectionUI] Initialized with UIFollowMode: " .. tostring(UIFollowMode))
+end
+
+--- 플레이어 카메라 찾기 (여러 방법 시도)
+---@return Transform | nil
+function FindPlayerCamera()
+    -- 1. Camera.main 시도
+    local mainCam = Camera.main
+    if mainCam ~= nil then
+        Debug.Log("[SeatSelectionUI] PlayerCamera found via Camera.main")
+        return mainCam.transform
+    end
+
+    -- 2. XR Origin 하위에서 찾기 (VR 환경)
+    local xrOriginNames = { "XR Origin", "XR Origin (XR Rig)", "XROrigin", "XR Rig" }
+    for _, name in ipairs(xrOriginNames) do
+        local xrOrigin = GameObject.Find(name)
+        if xrOrigin ~= nil then
+            local cam = xrOrigin:GetComponentInChildren(typeof(Camera))
+            if cam ~= nil then
+                Debug.Log("[SeatSelectionUI] PlayerCamera found under " .. name)
+                return cam.transform
+            end
+        end
+    end
+
+    -- 3. "MainCamera" 태그로 찾기
+    local taggedCam = GameObject.FindWithTag("MainCamera")
+    if taggedCam ~= nil then
+        Debug.Log("[SeatSelectionUI] PlayerCamera found via MainCamera tag")
+        return taggedCam.transform
+    end
+
+    -- 4. 이름으로 찾기
+    local cameraNames = { "Main Camera", "Camera", "PlayerCamera", "Head" }
+    for _, name in ipairs(cameraNames) do
+        local camObj = GameObject.Find(name)
+        if camObj ~= nil then
+            local cam = camObj:GetComponent(typeof(Camera))
+            if cam ~= nil then
+                Debug.Log("[SeatSelectionUI] PlayerCamera found by name: " .. name)
+                return camObj.transform
+            end
+        end
+    end
+
+    return nil
 end
 
 function update()
-    -- M 키로 UI 토글 (키보드)
-    if Input.GetKeyDown(KeyCode.M) then
-        ToggleUI()
+    -- follow 모드일 때 UI 위치 업데이트
+    if isUIVisible and UIFollowMode == "follow" then
+        UpdateFollowUI()
+    end
+end
+
+-- UI 토글은 외부에서 ToggleUI() 호출하거나
+-- 별도 버튼/이벤트로 처리
+
+--- follow 모드: UI가 플레이어를 따라다님
+function UpdateFollowUI()
+    if UICanvas == nil or PlayerCamera == nil then return end
+
+    -- 목표 위치 계산 (플레이어 앞)
+    local camForward = PlayerCamera.forward
+    camForward.y = 0
+    camForward = camForward.normalized
+
+    local targetPos = PlayerCamera.position + camForward * UIDistance
+    targetPos.y = PlayerCamera.position.y + UIHeightOffset
+
+    -- 부드럽게 이동
+    UICanvas.transform.position = Vector3.Lerp(
+        UICanvas.transform.position,
+        targetPos,
+        Time.deltaTime * UIFollowSpeed
+    )
+
+    -- 플레이어를 바라보도록 회전
+    local lookDir = PlayerCamera.position - UICanvas.transform.position
+    lookDir.y = 0
+    if lookDir.magnitude > 0.01 then
+        UICanvas.transform.rotation = Quaternion.LookRotation(-lookDir)
     end
 
-    -- VR 컨트롤러: 메뉴 버튼으로 UI 토글
-    -- 왼손 메뉴 버튼
-    if Input.GetButtonDown("XRI_Left_MenuButton") then
-        ToggleUI()
+    -- 디버그 로그 (2초 간격)
+    debugTimer = debugTimer + Time.deltaTime
+    if debugTimer >= DEBUG_INTERVAL then
+        debugTimer = 0
+        local uiPos = UICanvas.transform.position
+        local playerPos = PlayerCamera.position
     end
 end
 
@@ -509,8 +617,11 @@ function OnSelectButtonClick()
         Debug.Log("[SeatSelectionUI] Seat selected: " .. selectedSeatId)
     end
 
-    -- UI 숨기기
-    SetUIVisible(false)
+    -- toggle 모드일 때만 UI 숨기기
+    -- follow 모드는 항상 표시 유지
+    if UIFollowMode == "toggle" then
+        SetUIVisible(false)
+    end
 
     -- 햅틱 피드백
     XR.StartControllerVibration(false, 0.4, 0.1)
