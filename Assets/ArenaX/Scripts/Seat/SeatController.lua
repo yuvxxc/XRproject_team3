@@ -39,35 +39,35 @@ ArenaXManagerObject = NullableInject(ArenaXManagerObject)
 
 ---@type string
 ---@details ArenaXManager 오브젝트 이름 (자동 찾기용)
-ArenaXManagerName = "ArenaXManager"
+ArenaXManagerName = ArenaXManagerName or "ArenaXManager"
 
 ---@type string
 ---@details 좌석 열 번호 (A, B, C...)
-SeatRow = "A"
+SeatRow = SeatRow or "A"
 
 ---@type int
 ---@details 좌석 번호 (1, 2, 3...)
-SeatNumber = 1
+SeatNumber = SeatNumber or 1
 
 ---@type string
 ---@details 좌석 타입 ("일반", "VIP", "장애인석")
-SeatType = "일반"
+SeatType = SeatType or "일반"
 
 ---@type string
 ---@details 좌석 구역 (1층, 2층, VIP석)
-SeatSection = "1층"
+SeatSection = SeatSection or "1층"
 
 ---@type float
 ---@details 착석 판정 딜레이 (초) - 너무 빠른 판정 방지
-SitDetectionDelay = 0.5
+SitDetectionDelay = SitDetectionDelay or 0.5
 
 ---@type string
 ---@details 플레이어 감지용 태그 (플레이어 오브젝트에 설정된 태그)
-PlayerTag = "Player"
+PlayerTag = PlayerTag or "Player"
 
 ---@type string
 ---@details 플레이어 감지용 레이어 이름 (태그 대신 사용 가능)
-PlayerLayerName = ""
+PlayerLayerName = PlayerLayerName or ""
 --endregion
 
 -- 컴포넌트 참조
@@ -90,6 +90,13 @@ local seatedPlayer = nil
 --region 생명주기 함수
 
 function awake()
+    -- Injection 값 확인 (디버그)
+    Debug.Log("[SeatController] awake() - Injection 값 확인:")
+    Debug.Log("[SeatController]   SeatRow = " .. tostring(SeatRow) .. " (type: " .. type(SeatRow) .. ")")
+    Debug.Log("[SeatController]   SeatNumber = " .. tostring(SeatNumber) .. " (type: " .. type(SeatNumber) .. ")")
+    Debug.Log("[SeatController]   SeatType = " .. tostring(SeatType))
+    Debug.Log("[SeatController]   SeatSection = " .. tostring(SeatSection))
+
     -- 좌석 ID 생성
     seatId = SeatRow .. "-" .. tostring(SeatNumber)
 
@@ -104,6 +111,8 @@ function awake()
 end
 
 function start()
+    Debug.Log("[SeatController] start() - seatId: " .. seatId .. ", SeatRow: " .. tostring(SeatRow) .. ", SeatNumber: " .. tostring(SeatNumber))
+
     -- ArenaXManager 참조 가져오기
     FindArenaXManager()
 
@@ -121,6 +130,9 @@ function start()
             isOccupied = false
         }
         arenaXManager.RegisterSeat(seatId, seatData)
+        Debug.Log("[SeatController] RegisterSeat 완료: " .. seatId)
+    else
+        Debug.LogWarning("[SeatController] ArenaXManager를 찾을 수 없음! seatId: " .. seatId)
     end
 end
 
@@ -128,13 +140,17 @@ end
 function FindArenaXManager()
     -- 이미 찾았으면 스킵
     if arenaXManager ~= nil then
+        Debug.Log("[SeatController] FindArenaXManager - 이미 찾음")
         return
     end
 
     -- 1. Injection으로 연결된 경우
+    Debug.Log("[SeatController] FindArenaXManager - ArenaXManagerObject: " .. tostring(ArenaXManagerObject))
     if ArenaXManagerObject ~= nil then
         arenaXManager = ArenaXManagerObject:GetLuaComponent("ArenaXManager")
+        Debug.Log("[SeatController] FindArenaXManager - GetLuaComponent 결과: " .. tostring(arenaXManager))
         if arenaXManager ~= nil then
+            Debug.Log("[SeatController] FindArenaXManager - Injection으로 찾음!")
             return
         end
     end

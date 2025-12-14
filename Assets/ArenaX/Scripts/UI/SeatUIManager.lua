@@ -348,8 +348,29 @@ function InitializeUI()
     -- 기존 버튼 제거
     ClearSeatButtons()
 
-    -- 좌석 버튼 생성은 ArenaXManager에서 좌석 데이터를 받은 후 수행
-    -- 또는 수동으로 호출
+    -- 좌석 버튼 자동 생성 (지연 호출 - SeatController들이 먼저 등록될 시간을 줌)
+    self:StartCoroutine(util.cs_generator(function()
+        -- 1초 대기 (모든 SeatController가 start()에서 RegisterSeat을 완료할 시간)
+        coroutine.yield(WaitForSeconds(1.0))
+
+        -- ArenaXManager에서 좌석 데이터 가져와서 버튼 생성
+        if arenaXManager ~= nil then
+            local seats = arenaXManager.GetAllSeats()
+            local seatCount = 0
+            for _ in pairs(seats) do
+                seatCount = seatCount + 1
+            end
+
+            if seatCount > 0 then
+                Debug.Log("[SeatUIManager] Auto-generating buttons for " .. seatCount .. " seats")
+                GenerateSeatButtons(seats)
+            else
+                Debug.Log("[SeatUIManager] No seats registered yet")
+            end
+        else
+            Debug.LogWarning("[SeatUIManager] ArenaXManager not found - cannot generate seat buttons")
+        end
+    end))
 end
 
 --- 좌석 데이터 기반으로 버튼 생성

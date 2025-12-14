@@ -3,7 +3,8 @@
 ## 프로젝트 상태
 
 **시작일**: 2025-12-07
-**현재 단계**: Phase 1 - 기초 구조 설정
+**현재 단계**: Phase 3 - UI 시스템 (진행 중)
+**최종 업데이트**: 2025-12-15
 
 ---
 
@@ -33,9 +34,16 @@
   - [x] 토글 기능
 
 ### 1.3 테스트 씬 구성
-- [ ] ArenaX_Main.unity 씬 생성
-- [ ] 기본 공연장 환경 배치
-- [ ] 테스트용 좌석 3-5개 배치
+- [x] XRproject.unity 씬 사용 (기존 경기장 씬)
+- [x] 기본 공연장 환경 배치 (기존 경기장 사용)
+- [x] 테스트용 좌석 3개 배치
+
+### 1.4 에디터 도구 (추가)
+- [x] ArenaXSceneSetup.cs 에디터 도구 생성
+  - [x] 매니저 오브젝트 자동 생성
+  - [x] VivenLuaBehaviour Injection 자동 설정
+  - [x] 좌석 컴포넌트 자동 구성 (VObject, VivenSittable, SeatController)
+  - [x] SitPoint/SitDetector 자동 생성
 
 ---
 
@@ -66,24 +74,31 @@
 ## Phase 3: UI 시스템 (UI System)
 
 ### 3.1 미니맵 UI 제작
-- [ ] MinimapCanvas.prefab 생성
-  - [ ] World Space Canvas 설정
-  - [ ] VivenCanvasSetting 적용
-- [ ] 좌석 배치도 이미지/프리팹 제작
-- [ ] SeatButton.prefab 생성
+- [x] MinimapCanvas 생성
+  - [x] World Space Canvas 설정
+  - [x] VivenCanvasSetting 적용
+- [x] 좌석 배치도 이미지 적용 (경기장 사진)
+- [x] SeatButton 동적 생성
 
 ### 3.2 SeatUIManager 구현
-- [ ] SeatUIManager.lua 생성
-  - [ ] 미니맵 좌석 버튼 동적 생성
-  - [ ] 좌석 클릭 이벤트 처리
-  - [ ] 현재 좌석 강조 표시
-- [ ] 정보 패널 UI
-  - [ ] 좌석 번호 표시
-  - [ ] 구역 정보 표시
+- [x] SeatUIManager.lua 생성
+  - [x] 미니맵 좌석 버튼 동적 생성
+  - [x] 좌석 클릭 이벤트 처리
+  - [x] 현재 좌석 강조 표시
+- [x] 정보 패널 UI
+  - [x] 좌석 번호 표시 (1F A-1 형식)
+  - [x] 구역 정보 표시
 
-### 3.3 UI 인터랙션
-- [ ] VR 포인터로 버튼 클릭 테스트
-- [ ] UI 위치 조정 (손목/고정 위치)
+### 3.3 SeatSelectionUI 구현 (추가)
+- [x] SeatSelectionUI.lua 생성
+  - [x] 드롭다운 필터 (Block, 층)
+  - [x] 좌석 버튼 그리드 동적 생성
+  - [x] 좌석 선택 및 정보 표시
+  - [x] Select 버튼으로 텔레포트
+
+### 3.4 UI 인터랙션
+- [x] VR 포인터로 버튼 클릭 테스트
+- [x] UI 위치 조정 (플레이어 앞 표시)
 - [ ] 관객 토글 버튼 추가
 
 ---
@@ -169,7 +184,9 @@
 ### 해결된 이슈
 | ID | 설명 | 해결일 |
 |----|------|--------|
-| - | - | - |
+| #001 | Injection 값이 런타임에 적용되지 않음 (SeatNumber가 항상 1) | 2025-12-15 |
+| | 원인: Lua 스크립트에서 `SeatNumber = 1` 직접 할당이 주입된 값을 덮어씀 | |
+| | 해결: `SeatNumber = SeatNumber or 1` 패턴으로 변경 | |
 
 ---
 
@@ -179,6 +196,10 @@
 |------|----------|--------|
 | 2025-12-07 | 프로젝트 구조 및 문서 생성 | Claude |
 | 2025-12-07 | 핵심 Lua 스크립트 4개 생성 (Manager, Seat, UI, Avatar) | Claude |
+| 2025-12-15 | ArenaXSceneSetup.cs 에디터 도구 생성 | Claude |
+| 2025-12-15 | SeatSelectionUI.lua 좌석 선택 UI 생성 | Claude |
+| 2025-12-15 | Injection 값 보존 패턴 수정 (`var = var or default`) | Claude |
+| 2025-12-15 | 좌석 선택 UI 테스트 완료 (A-1, A-2, A-3 정상 표시) | Claude |
 
 ---
 

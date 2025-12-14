@@ -96,7 +96,7 @@ Seat (GameObject)
 ```lua
 -- Injection 설정
 SeatController
-├── ArenaXManagerObject (필수)
+├── ArenaXManagerObject (선택, 비워두면 자동 찾기)
 ├── SeatRow ("A", "B", "C"...)
 ├── SeatNumber (1, 2, 3...)
 ├── SeatType ("일반", "VIP", "장애인석")
@@ -105,6 +105,21 @@ SeatController
 ├── PlayerTag ("Player")
 └── PlayerLayerName ("" 또는 레이어 이름)
 ```
+
+**⚠️ 중요: Injection 값 보존 패턴**
+
+Viven SDK의 Injection 시스템은 Lua 스크립트 실행 **전에** 전역 변수를 설정합니다.
+따라서 Lua 스크립트에서 직접 할당(`SeatNumber = 1`)을 하면 주입된 값이 덮어씌워집니다.
+
+```lua
+-- ❌ 잘못된 패턴 (주입된 값을 덮어씀)
+SeatNumber = 1
+
+-- ✅ 올바른 패턴 (주입된 값 보존)
+SeatNumber = SeatNumber or 1
+```
+
+모든 Injectable 변수는 반드시 `var = var or default` 패턴을 사용해야 합니다.
 
 **착석 감지 흐름**:
 ```

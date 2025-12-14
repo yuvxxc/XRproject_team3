@@ -99,6 +99,9 @@ UIFollowMode = "follow"
 UIFollowSpeed = 5.0
 --endregion
 
+-- 모듈 임포트
+local util = require 'xlua.util'
+
 -- 컴포넌트 참조
 local arenaXManager = nil
 local blockDropdownComp = nil
@@ -198,6 +201,19 @@ function start()
     end
 
     Debug.Log("[SeatSelectionUI] Initialized with UIFollowMode: " .. tostring(UIFollowMode))
+
+    -- 초기 좌석 데이터 로드 (지연 호출 - SeatController들이 먼저 등록될 시간을 줌)
+    self:StartCoroutine(util.cs_generator(function()
+        -- 1초 대기 (모든 SeatController가 start()에서 RegisterSeat을 완료할 시간)
+        coroutine.yield(WaitForSeconds(1.0))
+
+        Debug.Log("[SeatSelectionUI] Initial seat data loading...")
+        UpdateFilteredSeats()
+        UpdateSeatButtons()
+
+        local seatCount = GetTableCount(filteredSeats)
+        Debug.Log("[SeatSelectionUI] Loaded " .. seatCount .. " seats")
+    end))
 end
 
 --- 플레이어 카메라 찾기 (여러 방법 시도)

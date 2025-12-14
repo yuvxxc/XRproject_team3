@@ -450,13 +450,26 @@ AudiencePrefab: VirtualAudience.prefab
 - Injection 필드가 모두 연결되었는지 확인
 - `checkInject`로 된 필드는 필수 연결
 
+### 문제: Injection 값이 적용되지 않음 (모든 좌석이 같은 번호로 표시됨)
+- **원인**: Lua 스크립트에서 `SeatNumber = 1`처럼 직접 할당하면 주입된 값이 덮어씌워짐
+- **해결**: 반드시 `SeatNumber = SeatNumber or 1` 패턴 사용
+- Viven SDK는 스크립트 실행 **전에** Injection 값을 설정하므로, 직접 할당하면 안 됨
+
+```lua
+-- ❌ 잘못된 패턴
+SeatNumber = 1
+
+-- ✅ 올바른 패턴
+SeatNumber = SeatNumber or 1
+```
+
 ---
 
 ## 다음 단계
 
-1. ✅ Phase 1 완료 (스크립트 작성)
-2. ⬜ Phase 2: Unity에서 좌석 시스템 구축
-3. ⬜ Phase 3: UI 시스템 구축
+1. ✅ Phase 1 완료 (스크립트 작성 및 에디터 도구)
+2. ✅ Phase 2 완료 (좌석 시스템 - 에디터 도구로 자동화)
+3. 🔄 Phase 3 진행 중 (UI 시스템 구축)
 4. ⬜ Phase 4: 텔레포트 기능 구현
 5. ⬜ Phase 5: 관객 시스템 구축
 6. ⬜ Phase 6: 통합 테스트

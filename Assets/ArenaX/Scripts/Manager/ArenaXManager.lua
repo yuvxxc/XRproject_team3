@@ -127,7 +127,14 @@ end
 ---@param seatData SeatData
 function RegisterSeat(seatId, seatData)
     seats[seatId] = seatData
-    Debug.Log("[ArenaXManager] Seat registered: " .. seatId)
+
+    -- 현재 등록된 좌석 수 계산
+    local count = 0
+    for _ in pairs(seats) do
+        count = count + 1
+    end
+
+    Debug.Log("[ArenaXManager] Seat registered: " .. seatId .. " (총 " .. count .. "개)")
 end
 
 --- 좌석 정보 조회

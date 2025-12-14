@@ -1,0 +1,19 @@
+{
+    "name": "ArenaX.Editor",
+    "rootNamespace": "ArenaX.Editor",
+    "references": [
+        "GUID:e43c72b580d22f44aaf001f7a77f8603",
+        "GUID:aa6413b5f6eb0fc44bd2ef961292e2e7"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
