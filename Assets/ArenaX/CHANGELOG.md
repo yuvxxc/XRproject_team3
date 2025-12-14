@@ -1,5 +1,16 @@
 # ArenaX 변경 이력
 
+## [2024-12-15] UI 토글 버그 수정
+
+### 버그 수정
+- **UI 토글 동작 안함 문제 해결** (`SeatUIManager.lua`)
+  - `MinimapCanvasName`을 "MinimapCanvas" → "DefaultCanvas"로 변경
+  - `GameObject.Find()` 대신 `transform:Find()`로 Canvas 자식에서 검색
+  - 이벤트 리스너 등록 타이밍 수정: `onEnable()` → `FindRequiredObjects()` 이후 `RegisterButtonListeners()` 호출
+  - Unity 생명주기 순서 문제 해결 (onEnable이 start보다 먼저 호출되는 문제)
+
+---
+
 ## [2024-12-15] 관객 시스템 및 UI 개선
 
 ### 새로운 기능

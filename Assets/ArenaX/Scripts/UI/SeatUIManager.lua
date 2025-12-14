@@ -38,7 +38,7 @@ MinimapCanvas = NullableInject(MinimapCanvas)
 
 ---@type string
 ---@details 미니맵 Canvas 오브젝트 이름 (자동 찾기용)
-MinimapCanvasName = "MinimapCanvas"
+MinimapCanvasName = "DefaultCanvas"
 
 ---@type GameObject
 ---@details 좌석 버튼 컨테이너 (비워두면 자동으로 "SeatButtonContainer" 찾음)
@@ -283,26 +283,42 @@ function FindRequiredObjects()
         end
     end
 
-    -- UIToggleButton 찾기
+    -- UIToggleButton 찾기 (Canvas의 자식에서 찾기)
     if UIToggleButton == nil then
-        UIToggleButton = GameObject.Find(UIToggleButtonName)
-        if UIToggleButton ~= nil then
-            Debug.Log("[SeatUIManager] UIToggleButton found: " .. UIToggleButtonName)
-        else
-            Debug.Log("[SeatUIManager] UIToggleButton not found: " .. UIToggleButtonName)
+        -- 먼저 Canvas의 자식에서 찾기
+        if MinimapCanvas ~= nil then
+            local toggleButtonTransform = MinimapCanvas.transform:Find(UIToggleButtonName)
+            if toggleButtonTransform ~= nil then
+                UIToggleButton = toggleButtonTransform.gameObject
+                Debug.Log("[SeatUIManager] UIToggleButton found as child of Canvas: " .. UIToggleButtonName)
+            end
+        end
+        -- Canvas에서 못 찾으면 전역 검색
+        if UIToggleButton == nil then
+            UIToggleButton = GameObject.Find(UIToggleButtonName)
+            if UIToggleButton ~= nil then
+                Debug.Log("[SeatUIManager] UIToggleButton found globally: " .. UIToggleButtonName)
+            else
+                Debug.Log("[SeatUIManager] UIToggleButton not found: " .. UIToggleButtonName)
+            end
         end
     end
 
-    -- UIContainerPanel 찾기
+    -- UIContainerPanel 찾기 (Canvas의 자식에서 찾기)
     if UIContainerPanel == nil then
-        UIContainerPanel = GameObject.Find(UIContainerPanelName)
-        if UIContainerPanel ~= nil then
-            Debug.Log("[SeatUIManager] UIContainerPanel found: " .. UIContainerPanelName)
-        else
-            -- MinimapCanvas의 첫번째 자식을 컨테이너로 사용
-            if MinimapCanvas ~= nil and MinimapCanvas.transform.childCount > 0 then
-                UIContainerPanel = MinimapCanvas.transform:GetChild(0).gameObject
-                Debug.Log("[SeatUIManager] UIContainerPanel using first child of MinimapCanvas")
+        -- 먼저 Canvas의 자식에서 찾기
+        if MinimapCanvas ~= nil then
+            local containerTransform = MinimapCanvas.transform:Find(UIContainerPanelName)
+            if containerTransform ~= nil then
+                UIContainerPanel = containerTransform.gameObject
+                Debug.Log("[SeatUIManager] UIContainerPanel found as child of Canvas: " .. UIContainerPanelName)
+            end
+        end
+        -- Canvas에서 못 찾으면 전역 검색
+        if UIContainerPanel == nil then
+            UIContainerPanel = GameObject.Find(UIContainerPanelName)
+            if UIContainerPanel ~= nil then
+                Debug.Log("[SeatUIManager] UIContainerPanel found globally: " .. UIContainerPanelName)
             else
                 Debug.Log("[SeatUIManager] UIContainerPanel not found: " .. UIContainerPanelName)
             end
@@ -312,6 +328,34 @@ function FindRequiredObjects()
     -- SeatButtonPrefab은 프리팹이라 자동으로 찾을 수 없음
     if SeatButtonPrefab == nil then
         Debug.Log("[SeatUIManager] SeatButtonPrefab not assigned - seat buttons will not be generated")
+    end
+
+    -- 버튼 이벤트 리스너 등록 (FindRequiredObjects 완료 후)
+    RegisterButtonListeners()
+end
+
+--- 버튼 이벤트 리스너 등록
+function RegisterButtonListeners()
+    -- 관객 토글 버튼 이벤트 등록
+    if AudienceToggleButton ~= nil then
+        local button = AudienceToggleButton:GetComponent("Button")
+        if button ~= nil then
+            button.onClick:AddListener(OnAudienceToggleClicked)
+            Debug.Log("[SeatUIManager] AudienceToggleButton listener added")
+        end
+    end
+
+    -- UI 토글 버튼 이벤트 등록
+    if UIToggleButton ~= nil then
+        local button = UIToggleButton:GetComponent("Button")
+        if button ~= nil then
+            button.onClick:AddListener(OnUIToggleClicked)
+            Debug.Log("[SeatUIManager] UIToggleButton listener added")
+        else
+            Debug.Log("[SeatUIManager] UIToggleButton has no Button component!")
+        end
+    else
+        Debug.Log("[SeatUIManager] UIToggleButton is nil, cannot add listener")
     end
 end
 
@@ -372,23 +416,7 @@ end
 
 function onEnable()
     Debug.Log("[SeatUIManager] OnEnable")
-
-    -- 관객 토글 버튼 이벤트 등록
-    if AudienceToggleButton ~= nil then
-        local button = AudienceToggleButton:GetComponent("Button")
-        if button ~= nil then
-            button.onClick:AddListener(OnAudienceToggleClicked)
-        end
-    end
-
-    -- UI 토글 버튼 이벤트 등록
-    if UIToggleButton ~= nil then
-        local button = UIToggleButton:GetComponent("Button")
-        if button ~= nil then
-            button.onClick:AddListener(OnUIToggleClicked)
-            Debug.Log("[SeatUIManager] UIToggleButton listener added")
-        end
-    end
+    -- 리스너 등록은 FindRequiredObjects() 완료 후 RegisterButtonListeners()에서 처리
 end
 
 function onDisable()
@@ -398,7 +426,7 @@ function onDisable()
     if AudienceToggleButton ~= nil then
         local button = AudienceToggleButton:GetComponent("Button")
         if button ~= nil then
-            button.onClick:RemoveListener(OnAudienceToggleClicked)
+            button.onClick:RemoveAllListeners()
         end
     end
 
@@ -406,7 +434,7 @@ function onDisable()
     if UIToggleButton ~= nil then
         local button = UIToggleButton:GetComponent("Button")
         if button ~= nil then
-            button.onClick:RemoveListener(OnUIToggleClicked)
+            button.onClick:RemoveAllListeners()
         end
     end
 end
