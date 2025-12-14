@@ -159,12 +159,12 @@ end
 function SelectSeat(seatId)
     local seatData = seats[seatId]
     if seatData == nil then
-        Debug.LogWarning("[ArenaXManager] Seat not found: " .. seatId)
+        Debug.Log("[ArenaXManager] Seat not found: " .. seatId)
         return
     end
 
     if not seatData.isAvailable then
-        Debug.LogWarning("[ArenaXManager] Seat not available: " .. seatId)
+        Debug.Log("[ArenaXManager] Seat not available: " .. seatId)
         return
     end
 
@@ -273,14 +273,20 @@ end
 --- 관객 표시 토글
 ---@param show boolean
 function ToggleAudience(show)
+    Debug.Log("[ArenaXManager] ToggleAudience: " .. tostring(show) .. ", isSeated: " .. tostring(playerState.isSeated))
+
     isAudienceVisible = show
 
     if audienceManager ~= nil then
-        if show and playerState.isSeated then
-            audienceManager.SpawnAudienceNearPlayer(playerState.currentSeatId)
+        if show then
+            -- 관객 표시 요청
+            audienceManager.ToggleAudience(true)
         else
+            -- 관객 숨기기
             audienceManager.ClearAudience()
         end
+    else
+        Debug.Log("[ArenaXManager] audienceManager is nil!")
     end
 
     -- 이벤트 발생
@@ -349,6 +355,39 @@ function IsSeatAvailable(seatId)
     local seat = seats[seatId]
     if seat == nil then return false end
     return seat.isAvailable and not seat.isOccupied
+end
+
+--- 특정 좌석의 앞좌석 Transform 목록 가져오기
+---@param seatId string
+---@return Transform[]
+function GetFrontSeatTransforms(seatId)
+    local seat = seats[seatId]
+    if seat == nil then
+        Debug.Log("[ArenaXManager] GetFrontSeatTransforms: seat not found: " .. tostring(seatId))
+        return {}
+    end
+
+    -- SeatController에서 등록한 frontSeatTransforms 반환
+    if seat.frontSeatTransforms ~= nil then
+        return seat.frontSeatTransforms
+    end
+
+    Debug.Log("[ArenaXManager] GetFrontSeatTransforms: no front seats for: " .. seatId)
+    return {}
+end
+
+--- 좌석에 앞좌석 Transform 설정 (SeatController에서 호출)
+---@param seatId string
+---@param transforms Transform[]
+function SetFrontSeatTransforms(seatId, transforms)
+    local seat = seats[seatId]
+    if seat == nil then
+        Debug.Log("[ArenaXManager] SetFrontSeatTransforms: seat not found: " .. tostring(seatId))
+        return
+    end
+
+    seat.frontSeatTransforms = transforms
+    Debug.Log("[ArenaXManager] SetFrontSeatTransforms: " .. seatId .. " (" .. #transforms .. " transforms)")
 end
 
 --endregion

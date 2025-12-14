@@ -498,12 +498,12 @@ function UpdateSeatButtons()
     ClearSeatButtons()
 
     if SeatButtonGrid == nil then
-        Debug.LogWarning("[SeatSelectionUI] SeatButtonGrid is nil")
+        Debug.Log("[SeatSelectionUI] SeatButtonGrid is nil")
         return
     end
 
     if SeatButtonPrefab == nil then
-        Debug.LogWarning("[SeatSelectionUI] SeatButtonPrefab is nil")
+        Debug.Log("[SeatSelectionUI] SeatButtonPrefab is nil")
         return
     end
 
@@ -622,7 +622,7 @@ function OnSelectButtonClick()
     Debug.Log("[SeatSelectionUI] Select button clicked")
 
     if selectedSeatId == nil then
-        Debug.LogWarning("[SeatSelectionUI] No seat selected")
+        Debug.Log("[SeatSelectionUI] No seat selected")
         UI.ToastMessage("좌석을 선택해주세요")
         return
     end

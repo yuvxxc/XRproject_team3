@@ -64,6 +64,22 @@ CurrentSeatText = NullableInject(CurrentSeatText)
 ---@details 관객 토글 버튼
 AudienceToggleButton = NullableInject(AudienceToggleButton)
 
+---@type GameObject
+---@details UI 전체를 열고 닫는 토글 버튼 (항상 보임)
+UIToggleButton = NullableInject(UIToggleButton)
+
+---@type string
+---@details UI 토글 버튼 이름 (자동 찾기용)
+UIToggleButtonName = "UIToggleButton"
+
+---@type GameObject
+---@details 토글되는 메인 UI 컨테이너 패널 (비워두면 MinimapCanvas의 첫번째 자식 사용)
+UIContainerPanel = NullableInject(UIContainerPanel)
+
+---@type string
+---@details UI 컨테이너 패널 이름 (자동 찾기용) - 에디터 도구에서 "MainUI"로 생성됨
+UIContainerPanelName = "MainUI"
+
 ---@type Transform
 ---@details 플레이어 카메라 (UI가 따라다닐 대상, 비워두면 Camera.main 사용)
 PlayerCamera = NullableInject(PlayerCamera)
@@ -128,13 +144,26 @@ function start()
     -- 자동 찾기 실행
     FindRequiredObjects()
 
-    -- ArenaXManager 참조 가져오기
-    if ArenaXManagerObject ~= nil then
-        arenaXManager = ArenaXManagerObject:GetLuaComponent("ArenaXManager")
+    -- ArenaXManager 참조 가져오기 (코루틴으로 대기하여 초기화 순서 문제 해결)
+    self:StartCoroutine(util.cs_generator(function()
+        -- 부모/자식 스크립트 초기화 순서 문제를 피하기 위해 잠시 대기
+        coroutine.yield(WaitForEndOfFrame())
+
+        if ArenaXManagerObject ~= nil then
+            arenaXManager = ArenaXManagerObject:GetLuaComponent("ArenaXManager")
+        end
+
+        -- 아직 nil이면 부모에서 찾기 시도 (SeatUIManager가 ArenaXManager의 자식인 경우)
+        if arenaXManager == nil then
+            arenaXManager = self:GetLuaComponentInParent("ArenaXManager")
+        end
+
         if arenaXManager ~= nil then
             Debug.Log("[SeatUIManager] ArenaXManager connected")
+        else
+            Debug.Log("[SeatUIManager] ArenaXManager not found - will retry in InitializeUI")
         end
-    end
+    end))
 
     -- 플레이어 카메라 자동 찾기 (주입 안된 경우)
     if PlayerCamera == nil then
@@ -254,6 +283,32 @@ function FindRequiredObjects()
         end
     end
 
+    -- UIToggleButton 찾기
+    if UIToggleButton == nil then
+        UIToggleButton = GameObject.Find(UIToggleButtonName)
+        if UIToggleButton ~= nil then
+            Debug.Log("[SeatUIManager] UIToggleButton found: " .. UIToggleButtonName)
+        else
+            Debug.Log("[SeatUIManager] UIToggleButton not found: " .. UIToggleButtonName)
+        end
+    end
+
+    -- UIContainerPanel 찾기
+    if UIContainerPanel == nil then
+        UIContainerPanel = GameObject.Find(UIContainerPanelName)
+        if UIContainerPanel ~= nil then
+            Debug.Log("[SeatUIManager] UIContainerPanel found: " .. UIContainerPanelName)
+        else
+            -- MinimapCanvas의 첫번째 자식을 컨테이너로 사용
+            if MinimapCanvas ~= nil and MinimapCanvas.transform.childCount > 0 then
+                UIContainerPanel = MinimapCanvas.transform:GetChild(0).gameObject
+                Debug.Log("[SeatUIManager] UIContainerPanel using first child of MinimapCanvas")
+            else
+                Debug.Log("[SeatUIManager] UIContainerPanel not found: " .. UIContainerPanelName)
+            end
+        end
+    end
+
     -- SeatButtonPrefab은 프리팹이라 자동으로 찾을 수 없음
     if SeatButtonPrefab == nil then
         Debug.Log("[SeatUIManager] SeatButtonPrefab not assigned - seat buttons will not be generated")
@@ -261,6 +316,8 @@ function FindRequiredObjects()
 end
 
 --- 매 프레임 UI 위치 업데이트
+--- VR 환경에서는 키보드 Input이 지원되지 않음
+--- UI 토글은 AudienceToggleButton 또는 외부에서 ToggleMinimap() 호출로 처리
 function update()
     if not isUIVisible then return end
     if MinimapCanvas == nil then return end
@@ -323,6 +380,15 @@ function onEnable()
             button.onClick:AddListener(OnAudienceToggleClicked)
         end
     end
+
+    -- UI 토글 버튼 이벤트 등록
+    if UIToggleButton ~= nil then
+        local button = UIToggleButton:GetComponent("Button")
+        if button ~= nil then
+            button.onClick:AddListener(OnUIToggleClicked)
+            Debug.Log("[SeatUIManager] UIToggleButton listener added")
+        end
+    end
 end
 
 function onDisable()
@@ -333,6 +399,14 @@ function onDisable()
         local button = AudienceToggleButton:GetComponent("Button")
         if button ~= nil then
             button.onClick:RemoveListener(OnAudienceToggleClicked)
+        end
+    end
+
+    -- UI 토글 버튼 이벤트 해제
+    if UIToggleButton ~= nil then
+        local button = UIToggleButton:GetComponent("Button")
+        if button ~= nil then
+            button.onClick:RemoveListener(OnUIToggleClicked)
         end
     end
 end
@@ -353,6 +427,28 @@ function InitializeUI()
         -- 1초 대기 (모든 SeatController가 start()에서 RegisterSeat을 완료할 시간)
         coroutine.yield(WaitForSeconds(1.0))
 
+        -- ArenaXManager가 아직 nil이면 다시 시도
+        if arenaXManager == nil then
+            Debug.Log("[SeatUIManager] Retrying to find ArenaXManager...")
+
+            if ArenaXManagerObject ~= nil then
+                arenaXManager = ArenaXManagerObject:GetLuaComponent("ArenaXManager")
+            end
+
+            -- 부모에서 찾기 시도
+            if arenaXManager == nil then
+                arenaXManager = self:GetLuaComponentInParent("ArenaXManager")
+            end
+
+            -- GameObject.Find로 찾기 시도
+            if arenaXManager == nil then
+                local foundObj = GameObject.Find("ArenaXManager")
+                if foundObj ~= nil then
+                    arenaXManager = foundObj:GetLuaComponent("ArenaXManager")
+                end
+            end
+        end
+
         -- ArenaXManager에서 좌석 데이터 가져와서 버튼 생성
         if arenaXManager ~= nil then
             local seats = arenaXManager.GetAllSeats()
@@ -368,7 +464,7 @@ function InitializeUI()
                 Debug.Log("[SeatUIManager] No seats registered yet")
             end
         else
-            Debug.LogWarning("[SeatUIManager] ArenaXManager not found - cannot generate seat buttons")
+            Debug.Log("[SeatUIManager] ArenaXManager not found - cannot generate seat buttons")
         end
     end))
 end
@@ -390,7 +486,7 @@ end
 ---@param seatData SeatData
 function CreateSeatButton(seatId, seatData)
     if SeatButtonPrefab == nil or SeatButtonContainer == nil then
-        Debug.LogError("[SeatUIManager] SeatButtonPrefab or Container is nil")
+        Debug.Log("[SeatUIManager] SeatButtonPrefab or Container is nil")
         return
     end
 
@@ -451,11 +547,20 @@ function OnAudienceToggleClicked()
 
     if arenaXManager ~= nil then
         local currentState = arenaXManager.IsAudienceVisible()
+        Debug.Log("[SeatUIManager] Current audience state: " .. tostring(currentState) .. " -> " .. tostring(not currentState))
         arenaXManager.ToggleAudience(not currentState)
 
         -- 토글 버튼 텍스트 업데이트
         UpdateAudienceToggleText(not currentState)
+    else
+        Debug.Log("[SeatUIManager] arenaXManager is nil! Cannot toggle audience.")
     end
+end
+
+--- UI 토글 버튼 클릭 시 (UI 열기/닫기)
+function OnUIToggleClicked()
+    Debug.Log("[SeatUIManager] OnUIToggleClicked - current state: " .. tostring(isUIVisible))
+    ToggleMinimap()
 end
 
 --endregion
@@ -530,13 +635,19 @@ end
 function UpdateAudienceToggleText(isVisible)
     if AudienceToggleButton == nil then return end
 
+    local newText = isVisible and "관객 숨기기" or "관객 보기"
+
+    -- TMP_Text 먼저 시도
     local textComp = AudienceToggleButton:GetComponentInChildren(typeof(TMP_Text))
     if textComp ~= nil then
-        if isVisible then
-            textComp.text = "관객 숨기기"
-        else
-            textComp.text = "관객 보기"
-        end
+        textComp.text = newText
+        return
+    end
+
+    -- 일반 Text 시도
+    local uiText = AudienceToggleButton:GetComponentInChildren(typeof(CS.UnityEngine.UI.Text))
+    if uiText ~= nil then
+        uiText.text = newText
     end
 end
 
@@ -592,8 +703,27 @@ end
 --region 유틸리티
 
 --- 미니맵 표시/숨기기
+--- UIContainerPanel만 토글하고, MinimapCanvas와 UIToggleButton은 항상 보임
 ---@param show boolean
 function SetMinimapVisible(show)
+    -- UIContainerPanel이 있으면 그것만 토글
+    if UIContainerPanel ~= nil then
+        isUIVisible = show
+
+        if show then
+            -- UI를 플레이어 앞에 배치
+            PositionUIInFrontOfPlayer()
+        end
+
+        UIContainerPanel:SetActive(show)
+        Debug.Log("[SeatUIManager] SetMinimapVisible (ContainerPanel): " .. tostring(show))
+
+        -- 토글 버튼 텍스트 업데이트
+        UpdateUIToggleButtonText(show)
+        return
+    end
+
+    -- UIContainerPanel이 없으면 기존 방식 (MinimapCanvas 전체 토글)
     if MinimapCanvas == nil then return end
 
     isUIVisible = show
@@ -604,13 +734,32 @@ function SetMinimapVisible(show)
     end
 
     MinimapCanvas:SetActive(show)
-
-    Debug.Log("[SeatUIManager] SetMinimapVisible: " .. tostring(show))
+    Debug.Log("[SeatUIManager] SetMinimapVisible (Canvas): " .. tostring(show))
 end
 
 --- 미니맵 토글
 function ToggleMinimap()
     SetMinimapVisible(not isUIVisible)
+end
+
+--- UI 토글 버튼 텍스트 업데이트
+---@param isContainerVisible boolean
+function UpdateUIToggleButtonText(isContainerVisible)
+    if UIToggleButton == nil then return end
+
+    -- TMP_Text 찾기
+    local TMP_Text = typeof(CS.TMPro.TMP_Text)
+    local textComp = UIToggleButton:GetComponentInChildren(TMP_Text)
+    if textComp ~= nil then
+        textComp.text = isContainerVisible and "UI 닫기" or "UI 열기"
+        return
+    end
+
+    -- 일반 Text 찾기
+    local uiText = UIToggleButton:GetComponentInChildren(typeof(CS.UnityEngine.UI.Text))
+    if uiText ~= nil then
+        uiText.text = isContainerVisible and "UI 닫기" or "UI 열기"
+    end
 end
 
 --- UI를 플레이어 앞에 배치 (토글 모드용)

@@ -68,6 +68,87 @@ PlayerTag = PlayerTag or "Player"
 ---@type string
 ---@details 플레이어 감지용 레이어 이름 (태그 대신 사용 가능)
 PlayerLayerName = PlayerLayerName or ""
+
+-- 앞좌석 Transform들 (관객 배치용, 최대 10개)
+---@type Transform
+---@details 앞좌석 1
+FrontSeat1 = NullableInject(FrontSeat1)
+
+---@type Transform
+---@details 앞좌석 2
+FrontSeat2 = NullableInject(FrontSeat2)
+
+---@type Transform
+---@details 앞좌석 3
+FrontSeat3 = NullableInject(FrontSeat3)
+
+---@type Transform
+---@details 앞좌석 4
+FrontSeat4 = NullableInject(FrontSeat4)
+
+---@type Transform
+---@details 앞좌석 5
+FrontSeat5 = NullableInject(FrontSeat5)
+
+---@type Transform
+---@details 앞좌석 6
+FrontSeat6 = NullableInject(FrontSeat6)
+
+---@type Transform
+---@details 앞좌석 7
+FrontSeat7 = NullableInject(FrontSeat7)
+
+---@type Transform
+---@details 앞좌석 8
+FrontSeat8 = NullableInject(FrontSeat8)
+
+---@type Transform
+---@details 앞좌석 9
+FrontSeat9 = NullableInject(FrontSeat9)
+
+---@type Transform
+---@details 앞좌석 10
+FrontSeat10 = NullableInject(FrontSeat10)
+
+---@type Transform
+---@details 앞좌석 11
+FrontSeat11 = NullableInject(FrontSeat11)
+
+---@type Transform
+---@details 앞좌석 12
+FrontSeat12 = NullableInject(FrontSeat12)
+
+---@type Transform
+---@details 앞좌석 13
+FrontSeat13 = NullableInject(FrontSeat13)
+
+---@type Transform
+---@details 앞좌석 14
+FrontSeat14 = NullableInject(FrontSeat14)
+
+---@type Transform
+---@details 앞좌석 15
+FrontSeat15 = NullableInject(FrontSeat15)
+
+---@type Transform
+---@details 앞좌석 16
+FrontSeat16 = NullableInject(FrontSeat16)
+
+---@type Transform
+---@details 앞좌석 17
+FrontSeat17 = NullableInject(FrontSeat17)
+
+---@type Transform
+---@details 앞좌석 18
+FrontSeat18 = NullableInject(FrontSeat18)
+
+---@type Transform
+---@details 앞좌석 19
+FrontSeat19 = NullableInject(FrontSeat19)
+
+---@type Transform
+---@details 앞좌석 20
+FrontSeat20 = NullableInject(FrontSeat20)
 --endregion
 
 -- 컴포넌트 참조
@@ -131,8 +212,45 @@ function start()
         }
         arenaXManager.RegisterSeat(seatId, seatData)
         Debug.Log("[SeatController] RegisterSeat 완료: " .. seatId)
+
+        -- 앞좌석 Transform 등록 (관객 배치용)
+        RegisterFrontSeatTransforms()
     else
-        Debug.LogWarning("[SeatController] ArenaXManager를 찾을 수 없음! seatId: " .. seatId)
+        Debug.Log("[SeatController] ArenaXManager를 찾을 수 없음! seatId: " .. seatId)
+    end
+end
+
+--- 앞좌석 Transform을 ArenaXManager에 등록
+function RegisterFrontSeatTransforms()
+    if arenaXManager == nil then return end
+
+    local frontSeats = {}
+
+    -- Injection된 앞좌석 Transform 수집 (최대 20개)
+    if FrontSeat1 ~= nil then table.insert(frontSeats, FrontSeat1) end
+    if FrontSeat2 ~= nil then table.insert(frontSeats, FrontSeat2) end
+    if FrontSeat3 ~= nil then table.insert(frontSeats, FrontSeat3) end
+    if FrontSeat4 ~= nil then table.insert(frontSeats, FrontSeat4) end
+    if FrontSeat5 ~= nil then table.insert(frontSeats, FrontSeat5) end
+    if FrontSeat6 ~= nil then table.insert(frontSeats, FrontSeat6) end
+    if FrontSeat7 ~= nil then table.insert(frontSeats, FrontSeat7) end
+    if FrontSeat8 ~= nil then table.insert(frontSeats, FrontSeat8) end
+    if FrontSeat9 ~= nil then table.insert(frontSeats, FrontSeat9) end
+    if FrontSeat10 ~= nil then table.insert(frontSeats, FrontSeat10) end
+    if FrontSeat11 ~= nil then table.insert(frontSeats, FrontSeat11) end
+    if FrontSeat12 ~= nil then table.insert(frontSeats, FrontSeat12) end
+    if FrontSeat13 ~= nil then table.insert(frontSeats, FrontSeat13) end
+    if FrontSeat14 ~= nil then table.insert(frontSeats, FrontSeat14) end
+    if FrontSeat15 ~= nil then table.insert(frontSeats, FrontSeat15) end
+    if FrontSeat16 ~= nil then table.insert(frontSeats, FrontSeat16) end
+    if FrontSeat17 ~= nil then table.insert(frontSeats, FrontSeat17) end
+    if FrontSeat18 ~= nil then table.insert(frontSeats, FrontSeat18) end
+    if FrontSeat19 ~= nil then table.insert(frontSeats, FrontSeat19) end
+    if FrontSeat20 ~= nil then table.insert(frontSeats, FrontSeat20) end
+
+    if #frontSeats > 0 then
+        arenaXManager.SetFrontSeatTransforms(seatId, frontSeats)
+        Debug.Log("[SeatController] FrontSeatTransforms 등록: " .. seatId .. " (" .. #frontSeats .. "개)")
     end
 end
 
